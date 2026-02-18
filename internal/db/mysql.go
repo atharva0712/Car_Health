@@ -8,7 +8,7 @@ import (
 )
 
 func Connect() *sql.DB {
-	dsn := "root:password@tcp(127.0.0.1:3306)/car_monitor"  // data source name (connection string)
+	dsn := "root:password@tcp(127.0.0.1:3306)/car_monitor?parseTime=true" // data source name (connection string)
 
 	db, err := sql.Open("mysql", dsn)
 

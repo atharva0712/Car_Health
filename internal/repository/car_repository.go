@@ -35,13 +35,13 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 
 	defer rows.Close() //release db connection back to pool
 
-	var cars []models.Car
+	cars := []models.Car{}
 
 	for rows.Next() {
 		var car models.Car
 		err := rows.Scan(&car.VIN, &car.RegisteredAt) // copies column values into struct fields
-		if err != nil{
-			return nil,err
+		if err != nil {
+			return nil, err
 		}
 		cars = append(cars, car)
 	}

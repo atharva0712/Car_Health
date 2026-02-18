@@ -3,6 +3,7 @@ package handler
 import (
 	"car-monitoring-system/internal/service"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -31,7 +32,14 @@ func (h *CarHandler) RegisterCar(w http.ResponseWriter, r *http.Request) {
 // GET /cars
 
 func (h *CarHandler) GetCars(w http.ResponseWriter, r *http.Request){
-	cars, _ := h.Service.GetCars()
+	cars, err := h.Service.GetCars()
+	if err != nil{
+		log.Println("Error",err)
+		http.Error(w,err.Error(),http.StatusInternalServerError)
+		return
+	}
+	log.Println("Cars:",cars)
+	w.Header().Set("Content-Type","application/json")
 	json.NewEncoder(w).Encode(cars)
 }
 
