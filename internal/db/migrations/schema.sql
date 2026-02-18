@@ -1,12 +1,12 @@
 CREATE DATABASE IF NOT EXISTS car_monitor;
 USE car_monitor;
 
-CREATE TABLE cars (
+CREATE TABLE IF NOT EXISTS cars (
     vin VARCHAR(50) PRIMARY KEY,
     registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE attribute_status (
+CREATE TABLE IF NOT EXISTS attribute_status (
     vin VARCHAR(50) PRIMARY KEY,
     tire_pressure_value DECIMAL(5,2) NOT NULL,
     tire_pressure_status ENUM('NORMAL','WARNING','CRITICAL') NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE attribute_status (
     FOREIGN KEY (vin) REFERENCES cars(vin) ON DELETE CASCADE
 );
 
-CREATE TABLE health_events (
+CREATE TABLE IF NOT EXISTS health_events (
     id INT PRIMARY KEY AUTO_INCREMENT,
     vin VARCHAR(50) NOT NULL,
     attribute_name VARCHAR(50) NOT NULL,
