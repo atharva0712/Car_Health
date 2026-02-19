@@ -12,20 +12,34 @@ import (
 func main() {
 	database := db.Connect()
 
-	repo := repository.NewCarRepository(database)
+	carRepo := repository.NewCarRepository(database)
 
-	service := service.NewCarService(repo)
+	carService := service.NewCarService(carRepo)
 
-	handler := handler.CarHandler{Service: service}
+	carHandler := handler.CarHandler{Service: carService}
+
+	telemetryRepo := repository.NewTelemetryRepository(database)
+
+	telemetryService := service.NewTelemetryService(telemetryRepo)
+
+	telemetryHandler := handler.NewTelemetryHandler(telemetryService)
+
+	// Routes
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /cars",handler.RegisterCar)
+	mux.HandleFunc("POST /cars", carHandler.RegisterCar)
 
-	mux.HandleFunc("GET /cars",handler.GetCars)
+	mux.HandleFunc("GET /cars", carHandler.GetCars)
+
+	mux.HandleFunc("POST /telemetry", telemetryHandler.ReceiverTelemetry)
 
 	log.Println("Server running on 8000")
 
-	http.ListenAndServe(":8000",mux)
+	err := http.ListenAndServe(":8000", mux)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 
 }
