@@ -112,3 +112,17 @@ func (s *TelemetryService) handleTransition(vin, attribute string, oldStatus, ne
 
 	return nil
 }
+
+func (s *TelemetryService) GetCarStatus(
+    vin string,
+    attribute string,
+) (interface{}, error) {
+
+    // Attribute-specific request
+    if attribute != "" {
+        return s.Repo.GetCurrentStatus(vin, attribute)
+    }
+
+    // Full status request
+    return s.Repo.GetFullStatus(vin)
+}

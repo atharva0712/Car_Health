@@ -24,23 +24,67 @@ func (r *TelemetryRepository) GetCurrentStatus(vin string, attribute string) (mo
 		"oil_level":       "oil_level_status",
 		"brake_condition": "brake_condition_status",
 	}
-	
+
 	column, ok := columnMap[attribute]
 	if !ok {
 		return "", errors.New("invalid attribute name")
 	}
-	
+
 	query := "SELECT " + column + " FROM attribute_status WHERE vin = ?"
-	
+
 	var status models.Status
 	err := r.DB.QueryRow(query, vin).Scan(&status)
-	
+
 	if err == sql.ErrNoRows {
 		// If no row exists yet, assume NORMAL
 		return models.NORMAL, nil
 	}
-	
+
 	return status, err
+}
+
+func (r *TelemetryRepository) GetFullStatus(
+	vin string,
+) (*models.AttributeStatus, error) {
+
+	query := `
+	SELECT
+		vin,
+		tire_pressure_value, tire_pressure_status,
+		engine_temp_value, engine_temp_status,
+		battery_voltage_value, battery_voltage_status,
+		oil_level_value, oil_level_status,
+		brake_condition_value, brake_condition_status
+	FROM attribute_status
+	WHERE vin = ?
+`
+
+	var status models.AttributeStatus
+
+	err := r.DB.QueryRow(query, vin).Scan(
+		&status.VIN,
+
+		&status.TirePressureValue,
+		&status.TirePressureStatus,
+
+		&status.EngineTempValue,
+		&status.EngineTempStatus,
+
+		&status.BatteryVoltageValue,
+		&status.BatteryVoltageStatus,
+
+		&status.OilLevelValue,
+		&status.OilLevelStatus,
+
+		&status.BrakeConditionValue,
+		&status.BrakeConditionStatus,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, errors.New("status not found")
+	}
+
+	return &status, err
 }
 
 // InsertEvent - create new WARNING or CRITICAL event
@@ -48,10 +92,10 @@ func (r *TelemetryRepository) InsertEvent(vin string, attribute string, status m
 	if status == models.NORMAL {
 		return errors.New("cannot insert NORMAL events")
 	}
-	
+
 	query := `INSERT INTO health_events (vin, attribute_name, event_type, start_time) 
 	          VALUES (?, ?, ?, NOW())`
-	
+
 	_, err := r.DB.Exec(query, vin, attribute, status)
 	return err
 }
@@ -64,7 +108,7 @@ func (r *TelemetryRepository) CloseEvent(vin string, attribute string) error {
 	          WHERE vin = ? 
 	            AND attribute_name = ? 
 	            AND end_time IS NULL`
-	
+
 	_, err := r.DB.Exec(query, vin, attribute)
 	return err
 }
@@ -90,7 +134,7 @@ func (r *TelemetryRepository) UpsertAttributeStatus(vin string, metrics map[stri
 		oil_level_status = VALUES(oil_level_status),
 		brake_condition_value = VALUES(brake_condition_value),
 		brake_condition_status = VALUES(brake_condition_status)`
-	
+
 	_, err := r.DB.Exec(query,
 		vin,
 		metrics["tire_pressure"], status["tire_pressure"],
@@ -99,6 +143,6 @@ func (r *TelemetryRepository) UpsertAttributeStatus(vin string, metrics map[stri
 		metrics["oil_level"], status["oil_level"],
 		metrics["brake_condition"], status["brake_condition"],
 	)
-	
+
 	return err
 }

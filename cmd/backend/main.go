@@ -36,6 +36,10 @@ func main() {
 	telemetryService := service.NewTelemetryService(telemetryRepo, cfg)
 	telemetryHandler := handler.NewTelemetryHandler(telemetryService)
 	
+	// Status layer
+	statusHandler := handler.NewStatusHandler(telemetryService)
+
+
 	// Routes
 	mux := http.NewServeMux()
 	
@@ -47,6 +51,9 @@ func main() {
 	
 	// Telemetry endpoint
 	mux.HandleFunc("POST /telemetry", telemetryHandler.ReceiveTelemetry)
+
+	// Status endpoint
+	mux.HandleFunc("GET /cars/{vin}/status", statusHandler.GetCarStatus)
 	
 	// Get port from env
 	port := os.Getenv("BACKEND_PORT")
