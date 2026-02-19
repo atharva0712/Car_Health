@@ -1,61 +1,114 @@
 package service
 
 import (
+	"car-monitoring-system/internal/config"
 	"car-monitoring-system/internal/models"
 	"car-monitoring-system/internal/repository"
 )
 
 type TelemetryService struct {
-	Repo *repository.TelemetryRepository
+	Repo   *repository.TelemetryRepository
+	Config *config.Config
 }
 
-func NewTelemetryService(r *repository.TelemetryRepository) * TelemetryService{
-	return &TelemetryService{Repo: r}
+func NewTelemetryService(r *repository.TelemetryRepository, cfg *config.Config) *TelemetryService {
+	return &TelemetryService{
+		Repo:   r,
+		Config: cfg,
+	}
 }
 
-// Main Telemetry Processor
-
-func (s *TelemetryService) ProcessTelemetry(t models.Telemetry) error {
-	// Classifying New Status
-
-	newStatus := map[string]models.Status{
-		"tire_pressure" : ClassifyTirePressure(t.TirePressure),
-		"engine_temp" : ClassifyEngineTemp(t.EngineTemp),
-		"battery_voltage" : ClassifyBattery(t.BatteryVoltage),
-		"oil_level" : ClassifyOil(t.OilLevel),
-		"brake_condition" : ClassifyBrake(t.BrakeCondition),
+// ProcessTelemetry - main telemetry processor
+func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
+	// Map of attribute name → value
+	metrics := map[string]float64{
+		"tire_pressure":   t.TirePressure,
+		"engine_temp":     t.EngineTemp,
+		"battery_voltage": t.BatteryVoltage,
+		"oil_level":       t.OilLevel,
+		"brake_condition": t.BrakeCondition,
 	}
 
-	// Checking Previous Status
+	// Classify new status for each metric
+	newStatus := make(map[string]models.Status)
+	for attribute, value := range metrics {
+		newStatus[attribute] = s.classifyStatus(attribute, value)
+	}
 
-	for attribute,newStat := range newStatus{
-		
-		oldStat, err := s.Repo.GetCurrentStatus(t.VIN,attribute)
-		if err!=nil{
+	// Process each metric
+	for attribute, newStat := range newStatus {
+		// Get current status from DB
+		oldStat, err := s.Repo.GetCurrentStatus(t.VIN, attribute)
+		if err != nil {
 			return err
 		}
 
-		// Handle Transition
-		if oldStat == newStat{
+		// If status unchanged, skip event logic
+		if oldStat == newStat {
 			continue
 		}
 
-		// Closing old event if exists
-		if oldStat == models.WARNING || oldStat == models.CRITICAL{
-			err = s.Repo.CloseEvents(t.VIN,attribute)
-			if err != nil{
-				return  err
-			}
-		}
-		// Opening New Event if needed
-		if newStat == models.WARNING || newStat == models.CRITICAL{
-			err = s.Repo.InsertEvent(t.VIN,attribute,newStat)
-			if err != nil{
-				return err
-			}
+		// Handle state transition
+		err = s.handleTransition(t.VIN, attribute, oldStat, newStat)
+		if err != nil {
+			return err
 		}
 	}
 
-	// Upserting Attribute status
-	return s.Repo.UpdateAttributeStatus(t.VIN,t,newStatus)
+	// Upsert all attribute statuses
+	return s.Repo.UpsertAttributeStatus(t.VIN, metrics, newStatus)
+}
+
+// classifyStatus - uses config.yaml thresholds
+func (s *TelemetryService) classifyStatus(attribute string, value float64) models.Status {
+	metric := s.Config.Metrics[attribute]
+
+	// Check CRITICAL
+	if s.inRange(value, metric.Critical) {
+		return models.CRITICAL
+	}
+
+	// Check WARNING
+	if s.inRange(value, metric.Warning) {
+		return models.WARNING
+	}
+
+	// Default NORMAL
+	return models.NORMAL
+}
+
+// inRange - checks if value falls in range (handles tire_pressure dual range)
+func (s *TelemetryService) inRange(value float64, r config.Range) bool {
+	// Single range
+	if value >= r.Min && value <= r.Max {
+		return true
+	}
+
+	// Dual range (for tire_pressure warning: 28-29 OR 36-37)
+	if r.Max2 > 0 && value >= r.Min2 && value <= r.Max2 {
+		return true
+	}
+
+	return false
+}
+
+// handleTransition - implements the transition matrix
+func (s *TelemetryService) handleTransition(vin, attribute string, oldStatus, newStatus models.Status) error {
+	// Close old event if it was WARNING or CRITICAL
+	if oldStatus == models.WARNING || oldStatus == models.CRITICAL {
+		err := s.Repo.CloseEvent(vin, attribute)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Open new event if transitioning to WARNING or CRITICAL
+	if newStatus == models.WARNING || newStatus == models.CRITICAL {
+		err := s.Repo.InsertEvent(vin, attribute, newStatus)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

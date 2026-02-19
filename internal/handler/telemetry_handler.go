@@ -4,6 +4,7 @@ import (
 	"car-monitoring-system/internal/models"
 	"car-monitoring-system/internal/service"
 	"encoding/json"
+	"log"
 	"net/http"
 )
 
@@ -11,21 +12,25 @@ type TelemetryHandler struct {
 	Service *service.TelemetryService
 }
 
-func NewTelemetryHandler(s *service.TelemetryService) *TelemetryHandler{
+func NewTelemetryHandler(s *service.TelemetryService) *TelemetryHandler {
 	return &TelemetryHandler{Service: s}
 }
 
-// Post /telemetry
+// POST /telemetry
+func (h *TelemetryHandler) ReceiveTelemetry(w http.ResponseWriter, r *http.Request) {
+	var telemetry models.TelemetryPayload
 
-func (h *TelemetryHandler) ReceiverTelemetry(w http.ResponseWriter, r *http.Request){
-	var telemetry models.Telemetry
 	err := json.NewDecoder(r.Body).Decode(&telemetry)
-	if err != nil{
-		http.Error(w,err.Error(), http.StatusBadRequest)
+	if err != nil {
+		http.Error(w, "Invalid telemetry payload", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("Received telemetry for VIN: %s", telemetry.VIN)
+
 	err = h.Service.ProcessTelemetry(telemetry)
-	if err != nil{
+	if err != nil {
+		log.Printf("Error processing telemetry: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
