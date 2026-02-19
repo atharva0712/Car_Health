@@ -24,8 +24,12 @@ func Connect() *sql.DB {
 	port := os.Getenv("DB_PORT")
 	dbname := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
-		user, password, host, port, dbname)
+	if user == "" || password == "" || host == "" || port == "" || dbname == "" {
+			log.Fatal("Database environment variables are not properly set")
+		}
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",   //Data Source Name
+		user, password, host, port, dbname) // parseTime=true → ensures DATETIME and TIMESTAMP columns in MySQL are automatically converted to Go time.Time
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {

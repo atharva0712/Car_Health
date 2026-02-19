@@ -11,7 +11,6 @@ type CarHandler struct {
 	Service *service.CarService
 }
 
-
 // POST /cars
 func (h *CarHandler) RegisterCar(w http.ResponseWriter, r *http.Request) {
 	var car struct {
@@ -21,27 +20,24 @@ func (h *CarHandler) RegisterCar(w http.ResponseWriter, r *http.Request) {
 
 	err := h.Service.RegisterCar(car.VIN)
 
-	if err != nil{
-		http.Error(w,err.Error(), 500)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
 		return
 	}
 
-	w.Write([]byte("Car Registered"))
+	w.Write([]byte("Car Registered. VIN: " + car.VIN))
 }
 
 // GET /cars
 
-func (h *CarHandler) GetCars(w http.ResponseWriter, r *http.Request){
+func (h *CarHandler) GetCars(w http.ResponseWriter, r *http.Request) {
 	cars, err := h.Service.GetCars()
-	if err != nil{
-		log.Println("Error",err)
-		http.Error(w,err.Error(),http.StatusInternalServerError)
+	if err != nil {
+		log.Println("Error", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Cars:",cars)
-	w.Header().Set("Content-Type","application/json")
+	log.Println("Cars:", cars)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cars)
 }
-
-
-
