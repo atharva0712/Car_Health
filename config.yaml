@@ -1,0 +1,43 @@
+# Telemetry generation configuration
+generation:
+  interval_seconds: 20
+  distribution:
+    normal: 70      # 70% of readings
+    warning: 20     # 20% of readings
+    critical: 10    # 10% of readings
+
+# Metric thresholds and ranges
+metrics:
+  tire_pressure:
+    unit: "PSI"
+    normal: { min: 30.0, max: 35.0 }
+    warning: { min: 28.0, max: 29.9, min2: 36.0, max2: 37.0 }
+    critical: { min: 20.0, max: 27.9, min2: 37.1, max2: 45.0 }
+  
+  engine_temp:
+    unit: "°C"
+    normal: { min: 70.0, max: 95.0 }
+    warning: { min: 96.0, max: 105.0 }
+    critical: { min: 106.0, max: 130.0 }
+  
+  battery_voltage:
+    unit: "V"
+    normal: { min: 12.0, max: 14.0 }
+    warning: { min: 11.0, max: 11.9 }
+    critical: { min: 8.0, max: 10.9 }
+  
+  oil_level:
+    unit: "%"
+    normal: { min: 50.0, max: 100.0 }
+    warning: { min: 40.0, max: 49.0 }
+    critical: { min: 0.0, max: 39.0 }
+  
+  brake_condition:
+    unit: "%"
+    normal: { min: 60.0, max: 100.0 }
+    warning: { min: 50.0, max: 59.0 }
+    critical: { min: 0.0, max: 49.0 }
+
+# Backend server URL for generator to call
+backend:
+  url: "http://localhost:8080"

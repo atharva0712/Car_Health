@@ -9,7 +9,7 @@ type CarRepository struct {
 	DB *sql.DB // pointer to the database connection pool, inject the DB dependency into repo
 }
 
-func NewCarRepository(db *sql.DB) *CarRepository {
+func NewCarRepository(db *sql.DB) *CarRepository { //returns a pointer to a new CarRepository instance initialized with the provided database connection
 	return &CarRepository{DB: db}
 }
 
