@@ -1,6 +1,6 @@
 package models
 
-type Telemetry struct {
+type TelemetryPayload struct {
 	VIN            string  `json:"vin"`
 	TirePressure   float64 `json:"tire_pressure"`
 	EngineTemp     float64 `json:"engine_temp"`

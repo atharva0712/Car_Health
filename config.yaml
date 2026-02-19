@@ -40,4 +40,4 @@ metrics:
 
 # Backend server URL for generator to call
 backend:
-  url: "http://localhost:8080"
+  url: "http://localhost:8000"
