@@ -49,7 +49,7 @@ func (r *TelemetryRepository) InsertEvent(vin string, attribute string, status m
 
 func (r *TelemetryRepository) CloseEvents(vin string, attribute string) error {
 	query := `UPDATE health_events 
-				SET end_time = NOW()
+				SET end_time = NOW(),
 				duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW())
 				WHERE vin=? 
 				AND attribute_name=? 
