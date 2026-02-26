@@ -54,6 +54,7 @@ func main() {
 
 	// Status endpoint
 	mux.HandleFunc("GET /cars/{vin}/status", statusHandler.GetCarStatus)
+	mux.HandleFunc("GET /cars/{vin}/events", statusHandler.GetEvents)
 	
 	// Get port from env
 	port := os.Getenv("BACKEND_PORT")

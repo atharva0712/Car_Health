@@ -4,6 +4,7 @@ import (
 	"car-monitoring-system/internal/config"
 	"car-monitoring-system/internal/models"
 	"car-monitoring-system/internal/repository"
+	"errors"
 )
 
 type TelemetryService struct {
@@ -125,4 +126,16 @@ func (s *TelemetryService) GetCarStatus(
 
     // Full status request
     return s.Repo.GetFullStatus(vin)
+}
+
+func (s *TelemetryService) GetEvents(
+	vin string,
+	date string,
+) ([]models.HealthEvent, error) {
+
+	if vin == "" {
+		return nil, errors.New("vin is required")
+	}
+
+	return s.Repo.GetEvents(vin, date)
 }

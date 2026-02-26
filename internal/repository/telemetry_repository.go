@@ -113,6 +113,69 @@ func (r *TelemetryRepository) CloseEvent(vin string, attribute string) error {
 	return err
 }
 
+// GetEvents - retrieve all events for a car, optionally filtered by date
+func (r *TelemetryRepository) GetEvents(
+    vin string,
+    date string,
+) ([]models.HealthEvent, error) {
+
+    query := `
+        SELECT
+            vin,
+            attribute_name,
+            event_type,
+            start_time,
+            end_time,
+            duration_seconds
+        FROM health_events
+        WHERE vin = ?
+    `
+
+    args := []any{vin}
+
+    if date != "" {
+        query += `
+            AND start_time >= ?
+            AND start_time < DATE_ADD(?, INTERVAL 1 DAY)
+        `
+        args = append(args, date, date)
+    }
+
+    query += ` ORDER BY start_time DESC`
+
+    rows, err := r.DB.Query(query, args...)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var events []models.HealthEvent
+
+    for rows.Next() {
+        var event models.HealthEvent
+
+        err := rows.Scan(
+            &event.VIN,
+            &event.AttributeName,
+            &event.EventType,
+            &event.StartTime,
+            &event.EndTime,
+            &event.DurationSeconds,
+        )
+        if err != nil {
+            return nil, err
+        }
+
+        events = append(events, event)
+    }
+
+    if err := rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return events, nil
+}
+
 // UpsertAttributeStatus - insert or update all attribute values and statuses
 func (r *TelemetryRepository) UpsertAttributeStatus(vin string, metrics map[string]float64, status map[string]models.Status) error {
 	query := `INSERT INTO attribute_status (
