@@ -141,3 +141,15 @@ func (s *TelemetryService) GetCarStatus(vin string, attribute string) (interface
     // Full status request
     return s.Repo.GetFullStatus(vin)
 }
+
+func (s *TelemetryService) GetEvents(
+	vin string,
+	date string,
+) ([]models.HealthEvent, error) {
+
+	if vin == "" {
+		return nil, errors.New("vin is required")
+	}
+
+	return s.Repo.GetEvents(vin, date)
+}
