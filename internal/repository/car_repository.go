@@ -16,9 +16,9 @@ func NewCarRepository(db *sql.DB) *CarRepository { //returns a pointer to a new 
 // Create Car
 
 func (r *CarRepository) Create(car models.Car) error {
-	query := "INSERT INTO cars (vin) VALUES (?)"
+	query := `INSERT INTO cars (vin,simulation_enabled) VALUES (?,?)`
 
-	_, err := r.DB.Exec(query, car.VIN) // Exec used for Insert,Update,Delete
+	_, err := r.DB.Exec(query, car.VIN, car.SimulationEnabled) // Exec used for Insert,Update,Delete
 
 	return err
 }
@@ -27,7 +27,9 @@ func (r *CarRepository) Create(car models.Car) error {
 
 func (r *CarRepository) GetAll() ([]models.Car, error) {
 
-	rows, err := r.DB.Query("SELECT vin, registered_at FROM cars") // Query used when multiple rows are expected
+	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars`
+
+	rows, err := r.DB.Query(query) // Query used when multiple rows are expected
 
 	if err != nil {
 		return nil, err
@@ -39,7 +41,7 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 
 	for rows.Next() {
 		var car models.Car
-		err := rows.Scan(&car.VIN, &car.RegisteredAt) // copies column values into struct fields
+		err := rows.Scan(&car.VIN, &car.SimulationEnabled, &car.LastTelemetryAt, &car.RegisteredAt) // copies column values into struct fields
 		if err != nil {
 			return nil, err
 		}
@@ -53,9 +55,9 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 func (r *CarRepository) GetByVin(vin string) (models.Car, error) {
 	var car models.Car
 
-	query := "SELECT vin, registered_at FROM cars WHERE vin=?"
+	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars WHERE vin=`
 
-	err := r.DB.QueryRow(query, vin).Scan(&car.VIN, &car.RegisteredAt) //QueryRow : when expecting exactly one row
+	err := r.DB.QueryRow(query, vin).Scan(&car.VIN, &car.SimulationEnabled, &car.LastTelemetryAt, &car.RegisteredAt) //QueryRow : when expecting exactly one row
 
 	return car, err
 }
@@ -65,7 +67,43 @@ func (r *CarRepository) GetByVin(vin string) (models.Car, error) {
 func (r *CarRepository) Delete(vin string) error {
 	query := "DELETE FROM cars WHERE vin=?"
 
-	_, err := r.DB.Exec(query, vin)
+	result, err := r.DB.Exec(query, vin)
+	if err != nil {
+		return err
+	}
 
+	rowsAffected, err := result.RowsAffected() // To prevent deletion of  non existent VIN, if there is no VIN it will return no error
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// Updating Last Telemetry
+
+func (r *CarRepository) UpdateLastTelemetry(vin string) error {
+	query := `UPDATE cars SET last_telemetry_at = NOW() WHERE vin = ?`
+	_, err := r.DB.Exec(query, vin)
 	return err
+}
+
+// Toggling Simulation Enabled
+
+func (r *CarRepository) UpdateSimulationStatus(vin string, enabled bool) error {
+	query := `UPDATE cars SET simulation_enabled = ? WHERE vin = ?`
+	result, err := r.DB.Exec(query, enabled, vin)
+	if err != nil {
+		return  err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil{
+		return err
+	}
+	if rowsAffected == 0{
+		return sql.ErrNoRows
+	}
+	return nil
 }

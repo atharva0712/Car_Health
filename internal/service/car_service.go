@@ -16,8 +16,13 @@ func NewCarService(repo *repository.CarRepository) *CarService {
 func (s *CarService) RegisterCar(vin string) error {
 	car := models.Car{
 		VIN: vin,
+		SimulationEnabled: true,
 	}
 	return s.Repo.Create(car)
+}
+
+func (s *CarService) UpdateSimulationStatus(vin string, enabled bool) error {
+	return s.Repo.UpdateSimulationStatus(vin,enabled)
 }
 
 func (s *CarService) GetCars() ([]models.Car, error) {

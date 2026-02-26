@@ -4,5 +4,7 @@ import "time"
 
 type Car struct {
 	VIN          string    `json:"vin"`
-	RegisteredAt time.Time `json:"registered_at"`
+	SimulationEnabled bool `json:"simulation_enabled"`
+	LastTelemetryAt *time.Time `json:"last_telemetry_at"`
+	RegisteredAt time.Time `json:"registered_at"`	
 }

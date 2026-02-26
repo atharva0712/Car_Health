@@ -1,8 +1,10 @@
 CREATE DATABASE IF NOT EXISTS car_monitor;
 USE car_monitor;
 
-CREATE TABLE IF NOT EXISTS cars (
+CREATE TABLE cars (
     vin VARCHAR(50) PRIMARY KEY,
+    simulation_enabled BOOLEAN DEFAULT TRUE,
+    last_telemetry_at TIMESTAMP NULL,
     registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

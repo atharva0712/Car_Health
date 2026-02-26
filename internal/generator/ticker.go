@@ -6,23 +6,23 @@ import (
 	"car-monitoring-system/internal/models"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
-	"log"
 )
 
 type Ticker struct {
-	generator *TelemetryGenerator
+	generator  *TelemetryGenerator
 	backendURL string
-	interval time.Duration
+	interval   time.Duration
 }
 
 // NewTicker creates a new Ticker instance with the provided configuration.
 func NewTicker(cfg *config.Config) *Ticker {
 	return &Ticker{
-		generator: NewTelemetryGenerator(cfg),
+		generator:  NewTelemetryGenerator(cfg),
 		backendURL: cfg.Backend.URL,
-		interval: time.Duration(cfg.Generation.IntervalSeconds) * time.Second,
+		interval:   time.Duration(cfg.Generation.IntervalSeconds) * time.Second,
 	}
 }
 
@@ -77,11 +77,21 @@ func (t *Ticker) fetchVINs() ([]string, error) {
 		return nil, err
 	}
 
-	vins := make([]string, len(cars))
-	for i, car := range cars {
-		vins[i] = car.VIN
+	// Filter only simulation_enabled = true
+
+	var vins []string
+	for _, car := range cars {
+		if car.SimulationEnabled {
+			vins = append(vins, car.VIN)
+		}
 	}
 	return vins, nil
+
+	// vins := make([]string, len(cars))
+	// for i, car := range cars {
+	// 	vins[i] = car.VIN
+	// }
+	// return vins, nil
 }
 
 func (t *Ticker) sendTelemetry(payload models.TelemetryPayload) error {
@@ -91,7 +101,7 @@ func (t *Ticker) sendTelemetry(payload models.TelemetryPayload) error {
 	}
 
 	resp, err := http.Post(
-		t.backendURL + "/telemetry",
+		t.backendURL+"/telemetry",
 		"application/json",
 		bytes.NewBuffer(data),
 	)

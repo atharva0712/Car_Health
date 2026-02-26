@@ -4,6 +4,7 @@ import (
 	"car-monitoring-system/internal/config"
 	"car-monitoring-system/internal/models"
 	"car-monitoring-system/internal/repository"
+	"errors"
 )
 
 type TelemetryService struct {
@@ -20,6 +21,17 @@ func NewTelemetryService(r *repository.TelemetryRepository, cfg *config.Config) 
 
 // ProcessTelemetry - main telemetry processor
 func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
+
+	// Validating if car exists and simulation is enabled
+	enabled, err := s.Repo.IsSimulationEnabled(t.VIN)
+	if err != nil{
+		return err
+	}
+	if !enabled {
+		return errors.New("Simulation disabled for this car")
+	}
+
+
 	// Map of attribute name → value
 	metrics := map[string]float64{
 		"tire_pressure":   t.TirePressure,
@@ -55,8 +67,14 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 		}
 	}
 
-	// Upsert all attribute statuses
-	return s.Repo.UpsertAttributeStatus(t.VIN, metrics, newStatus)
+	// Update all attribute statuses
+	err = s.Repo.UpsertAttributeStatus(t.VIN, metrics, newStatus)
+	if err != nil{
+		return  err
+	}
+
+	// Update last telemetry time
+	return s.Repo.UpdateLastTelemetry(t.VIN)
 }
 
 // classifyStatus - uses config.yaml thresholds
@@ -113,10 +131,7 @@ func (s *TelemetryService) handleTransition(vin, attribute string, oldStatus, ne
 	return nil
 }
 
-func (s *TelemetryService) GetCarStatus(
-    vin string,
-    attribute string,
-) (interface{}, error) {
+func (s *TelemetryService) GetCarStatus(vin string, attribute string) (interface{}, error) {
 
     // Attribute-specific request
     if attribute != "" {

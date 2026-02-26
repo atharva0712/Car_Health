@@ -48,6 +48,7 @@ func main() {
 	mux.HandleFunc("GET /cars", carHandler.GetCars)
 	mux.HandleFunc("GET /cars/{vin}", carHandler.GetCarByVIN)
 	mux.HandleFunc("DELETE /cars/{vin}", carHandler.DeleteCar)
+	mux.HandleFunc("PATCH /cars/{vin}/simulation", carHandler.UpdateSimulationStatus)
 	
 	// Telemetry endpoint
 	mux.HandleFunc("POST /telemetry", telemetryHandler.ReceiveTelemetry)
