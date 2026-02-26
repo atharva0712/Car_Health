@@ -114,12 +114,8 @@ func (r *TelemetryRepository) CloseEvent(vin string, attribute string) error {
 }
 
 // GetEvents - retrieve all events for a car, optionally filtered by date
-func (r *TelemetryRepository) GetEvents(
-    vin string,
-    date string,
-) ([]models.HealthEvent, error) {
-
-    query := `
+func (r *TelemetryRepository) GetEvents(vin string, date string) ([]models.HealthEvent, error) {
+	query := `
         SELECT
             vin,
             attribute_name,
@@ -131,49 +127,49 @@ func (r *TelemetryRepository) GetEvents(
         WHERE vin = ?
     `
 
-    args := []any{vin}
+	args := []any{vin}
 
-    if date != "" {
-        query += `
+	if date != "" {
+		query += `
             AND start_time >= ?
             AND start_time < DATE_ADD(?, INTERVAL 1 DAY)
         `
-        args = append(args, date, date)
-    }
+		args = append(args, date, date)
+	}
 
-    query += ` ORDER BY start_time DESC`
+	query += ` ORDER BY start_time DESC`
 
-    rows, err := r.DB.Query(query, args...)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	rows, err := r.DB.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    var events []models.HealthEvent
+	var events []models.HealthEvent
 
-    for rows.Next() {
-        var event models.HealthEvent
+	for rows.Next() {
+		var event models.HealthEvent
 
-        err := rows.Scan(
-            &event.VIN,
-            &event.AttributeName,
-            &event.EventType,
-            &event.StartTime,
-            &event.EndTime,
-            &event.DurationSeconds,
-        )
-        if err != nil {
-            return nil, err
-        }
+		err := rows.Scan(
+			&event.VIN,
+			&event.AttributeName,
+			&event.EventType,
+			&event.StartTime,
+			&event.EndTime,
+			&event.DurationSeconds,
+		)
+		if err != nil {
+			return nil, err
+		}
 
-        events = append(events, event)
-    }
+		events = append(events, event)
+	}
 
-    if err := rows.Err(); err != nil {
-        return nil, err
-    }
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-    return events, nil
+	return events, nil
 }
 
 // UpsertAttributeStatus - insert or update all attribute values and statuses

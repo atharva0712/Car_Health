@@ -24,13 +24,12 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 
 	// Validating if car exists and simulation is enabled
 	enabled, err := s.Repo.IsSimulationEnabled(t.VIN)
-	if err != nil{
+	if err != nil {
 		return err
 	}
 	if !enabled {
 		return errors.New("Simulation disabled for this car")
 	}
-
 
 	// Map of attribute name → value
 	metrics := map[string]float64{
@@ -69,8 +68,8 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 
 	// Update all attribute statuses
 	err = s.Repo.UpsertAttributeStatus(t.VIN, metrics, newStatus)
-	if err != nil{
-		return  err
+	if err != nil {
+		return err
 	}
 
 	// Update last telemetry time
@@ -133,13 +132,13 @@ func (s *TelemetryService) handleTransition(vin, attribute string, oldStatus, ne
 
 func (s *TelemetryService) GetCarStatus(vin string, attribute string) (interface{}, error) {
 
-    // Attribute-specific request
-    if attribute != "" {
-        return s.Repo.GetCurrentStatus(vin, attribute)
-    }
+	// Attribute-specific request
+	if attribute != "" {
+		return s.Repo.GetCurrentStatus(vin, attribute)
+	}
 
-    // Full status request
-    return s.Repo.GetFullStatus(vin)
+	// Full status request
+	return s.Repo.GetFullStatus(vin)
 }
 
 func (s *TelemetryService) GetEvents(

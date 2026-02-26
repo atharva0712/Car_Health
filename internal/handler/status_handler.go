@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"car-monitoring-system/internal/service"
 	"encoding/json"
 	"net/http"
-	"car-monitoring-system/internal/service"
 )
 
 type StatusHandler struct {
@@ -60,4 +60,3 @@ func (h *StatusHandler) GetEvents(
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
 }
-	
