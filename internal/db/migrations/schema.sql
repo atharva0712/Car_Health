@@ -23,12 +23,12 @@ CREATE TABLE IF NOT EXISTS attribute_status (
 );
 
 CREATE TABLE IF NOT EXISTS health_events (
-    id INT PRIMARY KEY AUTO_INCREMENT,
     vin VARCHAR(50) NOT NULL,
     attribute_name VARCHAR(50) NOT NULL,
     event_type ENUM('WARNING','CRITICAL') NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NULL,
     duration_seconds INT NULL,
+    PRIMARY KEY (vin, attribute_name, start_time),
     FOREIGN KEY (vin) REFERENCES cars(vin) ON DELETE CASCADE
 );
