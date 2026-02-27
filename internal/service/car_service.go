@@ -21,7 +21,7 @@ func NewCarService(repo *repository.CarRepository, log *logger.Logger) *CarServi
 func (s *CarService) RegisterCar(vin string) error {
 	s.Log.Debugf("Registering car with VIN: %s", vin)
 	car := models.Car{
-		VIN: vin,
+		VIN:               vin,
 		SimulationEnabled: true,
 	}
 	err := s.Repo.Create(car)
@@ -33,7 +33,7 @@ func (s *CarService) RegisterCar(vin string) error {
 
 func (s *CarService) UpdateSimulationStatus(vin string, enabled bool) error {
 	s.Log.Debugf("Updating simulation status for VIN: %s to %v", vin, enabled)
-	return s.Repo.UpdateSimulationStatus(vin,enabled)
+	return s.Repo.UpdateSimulationStatus(vin, enabled)
 }
 
 func (s *CarService) GetCars() ([]models.Car, error) {

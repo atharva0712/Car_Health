@@ -91,7 +91,6 @@ func (h *CarHandler) DeleteCar(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Car Deleted. VIN: " + vin))
 }
 
-
 // PATCH /cars/{vin}/simulation
 
 func (h *CarHandler) UpdateSimulationStatus(w http.ResponseWriter, r *http.Request) {
@@ -101,24 +100,24 @@ func (h *CarHandler) UpdateSimulationStatus(w http.ResponseWriter, r *http.Reque
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil{
+	if err != nil {
 		h.Log.Errorf("Failed to decode simulation update request: %v", err)
-		http.Error(w,err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	h.Log.Infof("Updating simulation status for VIN %s to %v", vin, req.SimulationEnabled)
 	err = h.Service.UpdateSimulationStatus(vin, req.SimulationEnabled)
 
-	if err == sql.ErrNoRows{
+	if err == sql.ErrNoRows {
 		h.Log.Warnf("Car not found for update: %s", vin)
 		http.Error(w, "Car Not Found", http.StatusNotFound)
 		return
 	}
 
-	if err != nil{
+	if err != nil {
 		h.Log.Errorf("Failed to update simulation status: %v", err)
-		http.Error(w,err.Error(),http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	h.Log.Infof("Simulation status updated successfully for VIN: %s", vin)
