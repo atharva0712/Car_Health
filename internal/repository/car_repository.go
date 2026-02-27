@@ -55,7 +55,7 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 func (r *CarRepository) GetByVin(vin string) (models.Car, error) {
 	var car models.Car
 
-	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars WHERE vin=`
+	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars WHERE vin=?`
 
 	err := r.DB.QueryRow(query, vin).Scan(&car.VIN, &car.SimulationEnabled, &car.LastTelemetryAt, &car.RegisteredAt) //QueryRow : when expecting exactly one row
 

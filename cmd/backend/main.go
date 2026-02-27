@@ -64,7 +64,7 @@ func main() {
 	// Get port from env
 	port := os.Getenv("BACKEND_PORT")
 	if port == "" {
-		port = "8000"
+		port = "8080"
 	}
 
 	log.Infof("Backend server running on port %s", port)

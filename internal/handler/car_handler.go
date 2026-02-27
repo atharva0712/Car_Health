@@ -64,12 +64,17 @@ func (h *CarHandler) GetCarByVIN(w http.ResponseWriter, r *http.Request) {
 	vin := r.PathValue("vin")
 	h.Log.Infof("Fetching car with VIN: %s", vin)
 
-	car, err := h.Service.GetCar(vin) // Uses GetCar from service
+	car, err := h.Service.GetCar(vin)
 	if err != nil {
-		h.Log.Errorf("Car not found: %s", vin)
-		http.Error(w, "Car not found", http.StatusNotFound)
-		return
-	}
+    if err == sql.ErrNoRows {
+        h.Log.Errorf("Car not found: %s", vin)
+        http.Error(w, "Car not found", http.StatusNotFound)
+    } else {
+        h.Log.Errorf("Database error fetching car %s: %v", vin, err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+    }
+    return
+}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(car)
