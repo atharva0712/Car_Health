@@ -4,12 +4,11 @@ import (
 	"car-monitoring-system/internal/config"
 	"car-monitoring-system/internal/db"
 	"car-monitoring-system/internal/handler"
+	"car-monitoring-system/internal/logger"
 	"car-monitoring-system/internal/repository"
 	"car-monitoring-system/internal/service"
-	"log"
 	"net/http"
 	"os"
-
 	"github.com/joho/godotenv"
 )
 
@@ -17,27 +16,32 @@ func main() {
 	// Load environment variables
 	godotenv.Load()
 
+	// Initialize logger
+	log := logger.NewLogger()
+	log.Infof("Starting backend server...")
+
 	// Load config.yaml
 	cfg, err := config.LoadConfig("config.yaml")
 	if err != nil {
-		log.Fatal("Failed to load config:", err)
+		log.Errorf("Failed to load config: %v", err)
 	}
 
 	// Database connection
 	database := db.Connect()
+	log.Info("Database connected successfully")
 
 	// Car layer
 	carRepo := repository.NewCarRepository(database)
-	carService := service.NewCarService(carRepo)
-	carHandler := handler.CarHandler{Service: carService}
+	carService := service.NewCarService(carRepo, log)
+	carHandler := handler.NewCarHandler(carService, log)
 
 	// Telemetry layer
 	telemetryRepo := repository.NewTelemetryRepository(database)
-	telemetryService := service.NewTelemetryService(telemetryRepo, cfg)
-	telemetryHandler := handler.NewTelemetryHandler(telemetryService)
+	telemetryService := service.NewTelemetryService(telemetryRepo, cfg, log)
+	telemetryHandler := handler.NewTelemetryHandler(telemetryService, log)
 
 	// Status layer
-	statusHandler := handler.NewStatusHandler(telemetryService)
+	statusHandler := handler.NewStatusHandler(telemetryService, log)
 
 	// Routes
 	mux := http.NewServeMux()
@@ -62,10 +66,10 @@ func main() {
 		port = "8000"
 	}
 
-	log.Printf("Backend server running on port %s", port)
+	log.Infof("Backend server running on port %s", port)
 
 	err = http.ListenAndServe(":"+port, mux)
 	if err != nil {
-		log.Fatal(err)
+		log.Errorf("Server error: %v", err)
 	}
 }

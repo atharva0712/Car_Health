@@ -3,10 +3,10 @@ package generator
 import (
 	"bytes"
 	"car-monitoring-system/internal/config"
+	"car-monitoring-system/internal/logger"
 	"car-monitoring-system/internal/models"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 )
@@ -15,14 +15,16 @@ type Ticker struct {
 	generator  *TelemetryGenerator
 	backendURL string
 	interval   time.Duration
+	Log        *logger.Logger
 }
 
 // NewTicker creates a new Ticker instance with the provided configuration.
-func NewTicker(cfg *config.Config) *Ticker {
+func NewTicker(cfg *config.Config, log *logger.Logger) *Ticker {
 	return &Ticker{
 		generator:  NewTelemetryGenerator(cfg),
 		backendURL: cfg.Backend.URL,
 		interval:   time.Duration(cfg.Generation.IntervalSeconds) * time.Second,
+		Log:        log,
 	}
 }
 
@@ -32,7 +34,7 @@ func (t *Ticker) Start() {
 	ticker := time.NewTicker(t.interval)
 	defer ticker.Stop()
 
-	log.Printf("Starting telemetry ticker with interval: %v\n", t.interval)
+	t.Log.Infof("Starting telemetry ticker with interval: %v", t.interval)
 
 	t.tick() // Generate immediately on start
 
@@ -47,11 +49,11 @@ func (t *Ticker) tick() {
 
 	vins, err := t.fetchVINs()
 	if err != nil {
-		log.Println("Error fetching VINs:", err)
+		t.Log.Errorf("Error fetching VINs: %v", err)
 		return
 	}
 
-	log.Printf("Generating telemetry for %d cars", len(vins))
+	t.Log.Infof("Generating telemetry for %d cars", len(vins))
 
 	// Generate and send telemetry for each car
 
@@ -59,7 +61,7 @@ func (t *Ticker) tick() {
 		payload := t.generator.GenerateTelemetry(vin)
 		err := t.sendTelemetry(payload)
 		if err != nil {
-			log.Println("Error sending telemetry for VIN", vin, ":", err)
+			t.Log.Errorf("Error sending telemetry for VIN %s: %v", vin, err)
 		}
 	}
 }
