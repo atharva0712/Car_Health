@@ -24,11 +24,8 @@ func (s *CarService) RegisterCar(vin string) error {
 		VIN:               vin,
 		SimulationEnabled: true,
 	}
-	err := s.Repo.Create(car)
-	if err != nil {
-		s.Log.Errorf("Failed to register car: %v", err)
-	}
-	return err
+	return s.Repo.Create(car)
+	
 }
 
 func (s *CarService) UpdateSimulationStatus(vin string, enabled bool) error {

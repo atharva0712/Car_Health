@@ -36,9 +36,6 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 		s.Log.Warnf("Simulation disabled for car: %s", t.VIN)
 		return errors.New("Simulation disabled for this car")
 	}
-	if err != nil {
-		return err
-	}
 
 	// Map of attribute name → value
 	metrics := map[string]float64{
@@ -158,10 +155,7 @@ func (s *TelemetryService) GetCarStatus(vin string, attribute string) (interface
 	return s.Repo.GetFullStatus(vin)
 }
 
-func (s *TelemetryService) GetEvents(
-	vin string,
-	date string,
-) ([]models.HealthEvent, error) {
+func (s *TelemetryService) GetEvents(vin string,date string) ([]models.HealthEvent, error) {
 	s.Log.Debugf("Getting events for VIN: %s, date: %s", vin, date)
 
 	if vin == "" {

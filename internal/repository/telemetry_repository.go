@@ -15,6 +15,7 @@ func NewTelemetryRepository(db *sql.DB) *TelemetryRepository {
 }
 
 // GetCurrentStatus - get current status of a specific attribute
+
 func (r *TelemetryRepository) GetCurrentStatus(vin string, attribute string) (models.Status, error) {
 	// Whitelist valid attributes to prevent SQL injection
 	columnMap := map[string]string{
@@ -43,9 +44,7 @@ func (r *TelemetryRepository) GetCurrentStatus(vin string, attribute string) (mo
 	return status, err
 }
 
-func (r *TelemetryRepository) GetFullStatus(
-	vin string,
-) (*models.AttributeStatus, error) {
+func (r *TelemetryRepository) GetFullStatus(vin string) (*models.AttributeStatus, error) {
 
 	query := `
 	SELECT
@@ -81,7 +80,7 @@ func (r *TelemetryRepository) GetFullStatus(
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errors.New("status not found")
+		return nil, nil
 	}
 
 	return &status, err
