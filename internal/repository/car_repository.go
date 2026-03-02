@@ -55,7 +55,7 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 func (r *CarRepository) GetByVin(vin string) (models.Car, error) {
 	var car models.Car
 
-	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars WHERE vin=`
+	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars WHERE vin=?`
 
 	err := r.DB.QueryRow(query, vin).Scan(&car.VIN, &car.SimulationEnabled, &car.LastTelemetryAt, &car.RegisteredAt) //QueryRow : when expecting exactly one row
 
@@ -96,13 +96,13 @@ func (r *CarRepository) UpdateSimulationStatus(vin string, enabled bool) error {
 	query := `UPDATE cars SET simulation_enabled = ? WHERE vin = ?`
 	result, err := r.DB.Exec(query, enabled, vin)
 	if err != nil {
-		return  err
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil{
 		return err
 	}
-	if rowsAffected == 0{
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
 		return sql.ErrNoRows
 	}
 	return nil

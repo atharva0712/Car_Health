@@ -24,11 +24,11 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 
 	// Validating if car exists and simulation is enabled
 	enabled, err := s.Repo.IsSimulationEnabled(t.VIN)
-	if err != nil {
-		return err
-	}
 	if !enabled {
 		return errors.New("Simulation disabled for this car")
+	}
+	if err != nil {
+		return err
 	}
 
 	// Map of attribute name → value
