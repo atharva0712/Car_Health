@@ -2,6 +2,7 @@ package service
 
 import (
 	"car-monitoring-system/internal/config"
+	"car-monitoring-system/internal/logger"
 	"car-monitoring-system/internal/models"
 	"car-monitoring-system/internal/repository"
 	"errors"
@@ -10,21 +11,29 @@ import (
 type TelemetryService struct {
 	Repo   *repository.TelemetryRepository
 	Config *config.Config
+	Log    *logger.Logger
 }
 
-func NewTelemetryService(r *repository.TelemetryRepository, cfg *config.Config) *TelemetryService {
+func NewTelemetryService(r *repository.TelemetryRepository, cfg *config.Config, log *logger.Logger) *TelemetryService {
 	return &TelemetryService{
 		Repo:   r,
 		Config: cfg,
+		Log:    log,
 	}
 }
 
 // ProcessTelemetry - main telemetry processor
 func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
+	s.Log.Debugf("Processing telemetry for VIN: %s", t.VIN)
 
 	// Validating if car exists and simulation is enabled
 	enabled, err := s.Repo.IsSimulationEnabled(t.VIN)
+	if err != nil {
+		s.Log.Errorf("Error checking if simulation is enabled: %v", err)
+		return err
+	}
 	if !enabled {
+		s.Log.Warnf("Simulation disabled for car: %s", t.VIN)
 		return errors.New("Simulation disabled for this car")
 	}
 	if err != nil {
@@ -51,6 +60,7 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 		// Get current status from DB
 		oldStat, err := s.Repo.GetCurrentStatus(t.VIN, attribute)
 		if err != nil {
+			s.Log.Errorf("Error getting current status: %v", err)
 			return err
 		}
 
@@ -59,9 +69,12 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 			continue
 		}
 
+		s.Log.Infof("Status transition for VIN %s, attribute %s: %v -> %v", t.VIN, attribute, oldStat, newStat)
+
 		// Handle state transition
 		err = s.handleTransition(t.VIN, attribute, oldStat, newStat)
 		if err != nil {
+			s.Log.Errorf("Error handling transition: %v", err)
 			return err
 		}
 	}
@@ -69,6 +82,7 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 	// Update all attribute statuses
 	err = s.Repo.UpsertAttributeStatus(t.VIN, metrics, newStatus)
 	if err != nil {
+		s.Log.Errorf("Error updating attribute status: %v", err)
 		return err
 	}
 
@@ -115,6 +129,7 @@ func (s *TelemetryService) handleTransition(vin, attribute string, oldStatus, ne
 	if oldStatus == models.WARNING || oldStatus == models.CRITICAL {
 		err := s.Repo.CloseEvent(vin, attribute)
 		if err != nil {
+			s.Log.Errorf("Error closing event: %v", err)
 			return err
 		}
 	}
@@ -123,6 +138,7 @@ func (s *TelemetryService) handleTransition(vin, attribute string, oldStatus, ne
 	if newStatus == models.WARNING || newStatus == models.CRITICAL {
 		err := s.Repo.InsertEvent(vin, attribute, newStatus)
 		if err != nil {
+			s.Log.Errorf("Error inserting event: %v", err)
 			return err
 		}
 	}
@@ -131,6 +147,7 @@ func (s *TelemetryService) handleTransition(vin, attribute string, oldStatus, ne
 }
 
 func (s *TelemetryService) GetCarStatus(vin string, attribute string) (interface{}, error) {
+	s.Log.Debugf("Getting car status for VIN: %s, attribute: %s", vin, attribute)
 
 	// Attribute-specific request
 	if attribute != "" {
@@ -145,8 +162,10 @@ func (s *TelemetryService) GetEvents(
 	vin string,
 	date string,
 ) ([]models.HealthEvent, error) {
+	s.Log.Debugf("Getting events for VIN: %s, date: %s", vin, date)
 
 	if vin == "" {
+		s.Log.Warn("GetEvents called without VIN")
 		return nil, errors.New("vin is required")
 	}
 

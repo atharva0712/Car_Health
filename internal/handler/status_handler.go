@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"car-monitoring-system/internal/logger"
 	"car-monitoring-system/internal/service"
 	"encoding/json"
 	"net/http"
@@ -8,11 +9,13 @@ import (
 
 type StatusHandler struct {
 	TelemetryService *service.TelemetryService
+	Log              *logger.Logger
 }
 
-func NewStatusHandler(s *service.TelemetryService) *StatusHandler {
+func NewStatusHandler(s *service.TelemetryService, log *logger.Logger) *StatusHandler {
 	return &StatusHandler{
 		TelemetryService: s,
+		Log:              log,
 	}
 }
 
@@ -23,9 +26,11 @@ func (h *StatusHandler) GetCarStatus(
 ) {
 	vin := r.PathValue("vin")
 	attribute := r.URL.Query().Get("attribute")
+	h.Log.Infof("Fetching status for VIN: %s, attribute: %s", vin, attribute)
 
 	result, err := h.TelemetryService.GetCarStatus(vin, attribute)
 	if err != nil {
+		h.Log.Errorf("Error fetching car status: %v", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -41,14 +46,17 @@ func (h *StatusHandler) GetEvents(
 ) {
 	vin := r.PathValue("vin")
 	if vin == "" {
+		h.Log.Warn("GetEvents called without VIN")
 		http.Error(w, "vin is required", http.StatusBadRequest)
 		return
 	}
 
 	date := r.URL.Query().Get("date")
+	h.Log.Infof("Fetching events for VIN: %s, date: %s", vin, date)
 
 	result, err := h.TelemetryService.GetEvents(vin, date)
 	if err != nil {
+		h.Log.Errorf("Error fetching events: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -57,6 +65,7 @@ func (h *StatusHandler) GetEvents(
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
+		h.Log.Errorf("Failed to encode response: %v", err)
 		http.Error(w, "failed to encode response", http.StatusInternalServerError)
 	}
 }
