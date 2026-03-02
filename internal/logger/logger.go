@@ -14,11 +14,11 @@ type Logger struct {
 // NewLogger creates a new logger instance with console output in plain text
 func NewLogger() *Logger {
 	// Configure zerolog for plain text console output
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
 	// Create a new logger with plain text output (no JSON)
 	output := zerolog.ConsoleWriter{Out: os.Stdout}
-	log := zerolog.New(output).Level(zerolog.InfoLevel)
+	log := zerolog.New(output).Level(zerolog.DebugLevel)
 
 	return &Logger{Logger: &log}
 }
