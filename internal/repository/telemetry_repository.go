@@ -205,16 +205,6 @@ func (r *TelemetryRepository) UpsertAttributeStatus(vin string, metrics map[stri
 	return err
 }
 
-// Updating Last Telemetry to cars table
-
-func (r *TelemetryRepository) UpdateLastTelemetry(vin string) error {
-
-	query := `UPDATE cars SET last_telemetry_at = NOW() where vin = ?`
-
-	_, err := r.DB.Exec(query, vin)
-	return err
-}
-
 // Checking if Simulation is Enabled or Not
 
 func (r *TelemetryRepository) IsSimulationEnabled(vin string) (bool, error) {

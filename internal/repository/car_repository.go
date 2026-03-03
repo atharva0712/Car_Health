@@ -27,7 +27,7 @@ func (r *CarRepository) Create(car models.Car) error {
 
 func (r *CarRepository) GetAll() ([]models.Car, error) {
 
-	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars`
+	query := `SELECT vin, simulation_enabled, registered_at FROM cars`
 
 	rows, err := r.DB.Query(query) // Query used when multiple rows are expected
 
@@ -41,7 +41,7 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 
 	for rows.Next() {
 		var car models.Car
-		err := rows.Scan(&car.VIN, &car.SimulationEnabled, &car.LastTelemetryAt, &car.RegisteredAt) // copies column values into struct fields
+		err := rows.Scan(&car.VIN, &car.SimulationEnabled, &car.RegisteredAt) // copies column values into struct fields
 		if err != nil {
 			return nil, err
 		}
@@ -55,9 +55,9 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 func (r *CarRepository) GetByVin(vin string) (models.Car, error) {
 	var car models.Car
 
-	query := `SELECT vin, simulation_enabled, last_telemetry_at, registered_at FROM cars WHERE vin=?`
+	query := `SELECT vin, simulation_enabled, registered_at FROM cars WHERE vin=?`
 
-	err := r.DB.QueryRow(query, vin).Scan(&car.VIN, &car.SimulationEnabled, &car.LastTelemetryAt, &car.RegisteredAt) //QueryRow : when expecting exactly one row
+	err := r.DB.QueryRow(query, vin).Scan(&car.VIN, &car.SimulationEnabled, &car.RegisteredAt) //QueryRow : when expecting exactly one row
 
 	return car, err
 }
@@ -80,14 +80,6 @@ func (r *CarRepository) Delete(vin string) error {
 		return sql.ErrNoRows
 	}
 	return nil
-}
-
-// Updating Last Telemetry
-
-func (r *CarRepository) UpdateLastTelemetry(vin string) error {
-	query := `UPDATE cars SET last_telemetry_at = NOW() WHERE vin = ?`
-	_, err := r.DB.Exec(query, vin)
-	return err
 }
 
 // Toggling Simulation Enabled

@@ -83,8 +83,7 @@ func (s *TelemetryService) ProcessTelemetry(t models.TelemetryPayload) error {
 		return err
 	}
 
-	// Update last telemetry time
-	return s.Repo.UpdateLastTelemetry(t.VIN)
+	return nil
 }
 
 // classifyStatus - uses config.yaml thresholds
@@ -155,7 +154,7 @@ func (s *TelemetryService) GetCarStatus(vin string, attribute string) (interface
 	return s.Repo.GetFullStatus(vin)
 }
 
-func (s *TelemetryService) GetEvents(vin string,date string) ([]models.HealthEvent, error) {
+func (s *TelemetryService) GetEvents(vin string, date string) ([]models.HealthEvent, error) {
 	s.Log.Debugf("Getting events for VIN: %s, date: %s", vin, date)
 
 	if vin == "" {
