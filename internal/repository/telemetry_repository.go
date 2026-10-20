@@ -2,6 +2,8 @@ package repository
 
 import (
 	"car-monitoring-system/internal/models"
+	"car-monitoring-system/internal/tenant"
+	"context"
 	"database/sql"
 	"errors"
 )
@@ -16,7 +18,11 @@ func NewTelemetryRepository(db *sql.DB) *TelemetryRepository {
 
 // GetCurrentStatus - get current status of a specific attribute
 
-func (r *TelemetryRepository) GetCurrentStatus(vin string, attribute string) (models.Status, error) {
+func (r *TelemetryRepository) GetCurrentStatus(ctx context.Context, vin string, attribute string) (models.Status, error) {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return "", err
+	}
 	// Whitelist valid attributes to prevent SQL injection
 	columnMap := map[string]string{
 		"tire_pressure":   "tire_pressure_status",
@@ -31,10 +37,10 @@ func (r *TelemetryRepository) GetCurrentStatus(vin string, attribute string) (mo
 		return "", errors.New("invalid attribute name")
 	}
 
-	query := "SELECT " + column + " FROM attribute_status WHERE vin = ?"
+	query := "SELECT " + column + " FROM attribute_status WHERE tenant_id = ? AND vin = ?"
 
 	var status models.Status
-	err := r.DB.QueryRow(query, vin).Scan(&status)
+	err = r.DB.QueryRowContext(ctx, query, tenantID, vin).Scan(&status)
 
 	if err == sql.ErrNoRows {
 		// If no row exists yet, assume NORMAL
@@ -44,7 +50,11 @@ func (r *TelemetryRepository) GetCurrentStatus(vin string, attribute string) (mo
 	return status, err
 }
 
-func (r *TelemetryRepository) GetFullStatus(vin string) (*models.AttributeStatus, error) {
+func (r *TelemetryRepository) GetFullStatus(ctx context.Context, vin string) (*models.AttributeStatus, error) {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	query := `
 	SELECT
@@ -55,12 +65,12 @@ func (r *TelemetryRepository) GetFullStatus(vin string) (*models.AttributeStatus
 		oil_level_value, oil_level_status,
 		brake_condition_value, brake_condition_status
 	FROM attribute_status
-	WHERE vin = ?
+	WHERE tenant_id = ? AND vin = ?
 `
 
 	var status models.AttributeStatus
 
-	err := r.DB.QueryRow(query, vin).Scan(
+	err = r.DB.QueryRowContext(ctx, query, tenantID, vin).Scan(
 		&status.VIN,
 
 		&status.TirePressureValue,
@@ -87,33 +97,46 @@ func (r *TelemetryRepository) GetFullStatus(vin string) (*models.AttributeStatus
 }
 
 // InsertEvent - create new WARNING or CRITICAL event
-func (r *TelemetryRepository) InsertEvent(vin string, attribute string, status models.Status) error {
+func (r *TelemetryRepository) InsertEvent(ctx context.Context, vin string, attribute string, status models.Status) error {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return err
+	}
 	if status == models.NORMAL {
 		return errors.New("cannot insert NORMAL events")
 	}
 
-	query := `INSERT INTO health_events (vin, attribute_name, event_type, start_time) 
-	          VALUES (?, ?, ?, NOW())`
+	query := `INSERT INTO health_events (tenant_id, vin, attribute_name, event_type, start_time)
+	          VALUES (?, ?, ?, ?, NOW())`
 
-	_, err := r.DB.Exec(query, vin, attribute, status)
+	_, err = r.DB.ExecContext(ctx, query, tenantID, vin, attribute, status)
 	return err
 }
 
 // CloseEvent - close the active event for this attribute
-func (r *TelemetryRepository) CloseEvent(vin string, attribute string) error {
+func (r *TelemetryRepository) CloseEvent(ctx context.Context, vin string, attribute string) error {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return err
+	}
 	query := `UPDATE health_events 
 	          SET end_time = NOW(),
 	              duration_seconds = TIMESTAMPDIFF(SECOND, start_time, NOW())
-	          WHERE vin = ? 
+	          WHERE tenant_id = ?
+	            AND vin = ?
 	            AND attribute_name = ? 
 	            AND end_time IS NULL`
 
-	_, err := r.DB.Exec(query, vin, attribute)
+	_, err = r.DB.ExecContext(ctx, query, tenantID, vin, attribute)
 	return err
 }
 
 // GetEvents - retrieve all events for a car, optionally filtered by date
-func (r *TelemetryRepository) GetEvents(vin string, date string) ([]models.HealthEvent, error) {
+func (r *TelemetryRepository) GetEvents(ctx context.Context, vin string, date string) ([]models.HealthEvent, error) {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 	query := `
         SELECT
             vin,
@@ -123,10 +146,10 @@ func (r *TelemetryRepository) GetEvents(vin string, date string) ([]models.Healt
             end_time,
             duration_seconds
         FROM health_events
-        WHERE vin = ?
+        WHERE tenant_id = ? AND vin = ?
     `
 
-	args := []any{vin}
+	args := []any{tenantID, vin}
 
 	if date != "" {
 		query += `
@@ -138,7 +161,7 @@ func (r *TelemetryRepository) GetEvents(vin string, date string) ([]models.Healt
 
 	query += ` ORDER BY start_time DESC`
 
-	rows, err := r.DB.Query(query, args...)
+	rows, err := r.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -172,15 +195,19 @@ func (r *TelemetryRepository) GetEvents(vin string, date string) ([]models.Healt
 }
 
 // UpsertAttributeStatus - insert or update all attribute values and statuses
-func (r *TelemetryRepository) UpsertAttributeStatus(vin string, metrics map[string]float64, status map[string]models.Status) error {
+func (r *TelemetryRepository) UpsertAttributeStatus(ctx context.Context, vin string, metrics map[string]float64, status map[string]models.Status) error {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return err
+	}
 	query := `INSERT INTO attribute_status (
-		vin, 
+		tenant_id, vin,
 		tire_pressure_value, tire_pressure_status,
 		engine_temp_value, engine_temp_status,
 		battery_voltage_value, battery_voltage_status,
 		oil_level_value, oil_level_status,
 		brake_condition_value, brake_condition_status
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	ON DUPLICATE KEY UPDATE
 		tire_pressure_value = VALUES(tire_pressure_value),
 		tire_pressure_status = VALUES(tire_pressure_status),
@@ -193,7 +220,8 @@ func (r *TelemetryRepository) UpsertAttributeStatus(vin string, metrics map[stri
 		brake_condition_value = VALUES(brake_condition_value),
 		brake_condition_status = VALUES(brake_condition_status)`
 
-	_, err := r.DB.Exec(query,
+	_, err = r.DB.ExecContext(ctx, query,
+		tenantID,
 		vin,
 		metrics["tire_pressure"], status["tire_pressure"],
 		metrics["engine_temp"], status["engine_temp"],
@@ -207,12 +235,16 @@ func (r *TelemetryRepository) UpsertAttributeStatus(vin string, metrics map[stri
 
 // Checking if Simulation is Enabled or Not
 
-func (r *TelemetryRepository) IsSimulationEnabled(vin string) (bool, error) {
-	query := `SELECT simulation_enabled FROM cars WHERE vin = ?`
+func (r *TelemetryRepository) IsSimulationEnabled(ctx context.Context, vin string) (bool, error) {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return false, err
+	}
+	query := `SELECT simulation_enabled FROM cars WHERE tenant_id = ? AND vin = ?`
 
 	var enabled bool
 
-	err := r.DB.QueryRow(query, vin).Scan(&enabled)
+	err = r.DB.QueryRowContext(ctx, query, tenantID, vin).Scan(&enabled)
 
 	return enabled, err
 }

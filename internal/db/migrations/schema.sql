@@ -1,14 +1,25 @@
 CREATE DATABASE IF NOT EXISTS car_monitor;
 USE car_monitor;
 
+CREATE TABLE tenants (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    api_key_hash CHAR(64) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE cars (
-    vin VARCHAR(50) PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    vin VARCHAR(50) NOT NULL,
     simulation_enabled BOOLEAN DEFAULT TRUE,
-    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (tenant_id, vin),
+    CONSTRAINT fk_cars_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
 
 CREATE TABLE IF NOT EXISTS attribute_status (
-    vin VARCHAR(50) PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    vin VARCHAR(50) NOT NULL,
     tire_pressure_value DECIMAL(5,2) NOT NULL,
     tire_pressure_status ENUM('NORMAL','WARNING','CRITICAL') NOT NULL,
     engine_temp_value DECIMAL(5,2) NOT NULL,
@@ -20,16 +31,20 @@ CREATE TABLE IF NOT EXISTS attribute_status (
     brake_condition_value DECIMAL(5,2) NOT NULL,
     brake_condition_status ENUM('NORMAL','WARNING','CRITICAL') NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (vin) REFERENCES cars(vin) ON DELETE CASCADE
+    PRIMARY KEY (tenant_id, vin),
+    CONSTRAINT fk_attribute_status_car FOREIGN KEY (tenant_id, vin)
+        REFERENCES cars(tenant_id, vin) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS health_events (
+    tenant_id BIGINT NOT NULL,
     vin VARCHAR(50) NOT NULL,
     attribute_name VARCHAR(50) NOT NULL,
     event_type ENUM('WARNING','CRITICAL') NOT NULL,
     start_time TIMESTAMP NOT NULL,
     end_time TIMESTAMP NULL,
     duration_seconds INT NULL,
-    PRIMARY KEY (vin, attribute_name, start_time),
-    FOREIGN KEY (vin) REFERENCES cars(vin) ON DELETE CASCADE
+    PRIMARY KEY (tenant_id, vin, attribute_name, start_time),
+    CONSTRAINT fk_health_events_car FOREIGN KEY (tenant_id, vin)
+        REFERENCES cars(tenant_id, vin) ON DELETE CASCADE
 );

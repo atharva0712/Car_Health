@@ -162,16 +162,18 @@ import (
 type Ticker struct {
 	config     *config.Config
 	backendURL string
+	apiKey     string
 	interval   time.Duration
 	workers    int
 	Log        *logger.Logger
 	httpClient *http.Client
 }
 
-func NewTicker(cfg *config.Config, log *logger.Logger) *Ticker {
+func NewTicker(cfg *config.Config, log *logger.Logger, apiKey string) *Ticker {
 	return &Ticker{
 		config:     cfg,
 		backendURL: cfg.Backend.URL,
+		apiKey:     apiKey,
 		interval:   time.Duration(cfg.Generation.IntervalSeconds) * time.Second,
 		workers:    5,
 		Log:        log,
@@ -249,11 +251,19 @@ func (t *Ticker) worker(id int, jobs <-chan string, wg *sync.WaitGroup) {
 }
 
 func (t *Ticker) fetchVINs() ([]string, error) {
-	resp, err := t.httpClient.Get(t.backendURL + "/cars")
+	req, err := http.NewRequest(http.MethodGet, t.backendURL+"/cars", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-API-Key", t.apiKey)
+	resp, err := t.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("backend returned status: %d", resp.StatusCode)
+	}
 
 	var cars []models.Car
 	err = json.NewDecoder(resp.Body).Decode(&cars)
@@ -278,11 +288,16 @@ func (t *Ticker) sendTelemetry(payload models.TelemetryPayload) error {
 		return err
 	}
 
-	resp, err := t.httpClient.Post(
+	req, err := http.NewRequest(http.MethodPost,
 		t.backendURL+"/telemetry",
-		"application/json",
 		bytes.NewBuffer(data),
 	)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", t.apiKey)
+	resp, err := t.httpClient.Do(req)
 	if err != nil {
 		return err
 	}

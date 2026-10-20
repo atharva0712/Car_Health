@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -9,6 +10,20 @@ import (
 // Logger wraps zerolog.Logger for dependency injection
 type Logger struct {
 	*zerolog.Logger
+}
+
+type contextKey struct{}
+
+func WithContext(ctx context.Context, log *Logger) context.Context {
+	return context.WithValue(ctx, contextKey{}, log)
+}
+
+func FromContext(ctx context.Context, fallback *Logger) *Logger {
+	log, ok := ctx.Value(contextKey{}).(*Logger)
+	if !ok {
+		return fallback
+	}
+	return log
 }
 
 // NewLogger creates a new logger instance with console output in plain text

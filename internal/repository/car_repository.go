@@ -2,6 +2,8 @@ package repository
 
 import (
 	"car-monitoring-system/internal/models"
+	"car-monitoring-system/internal/tenant"
+	"context"
 	"database/sql"
 )
 
@@ -15,21 +17,29 @@ func NewCarRepository(db *sql.DB) *CarRepository { //returns a pointer to a new 
 
 // Create Car
 
-func (r *CarRepository) Create(car models.Car) error {
-	query := `INSERT INTO cars (vin,simulation_enabled) VALUES (?,?)`
+func (r *CarRepository) Create(ctx context.Context, car models.Car) error {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+	query := `INSERT INTO cars (tenant_id, vin, simulation_enabled) VALUES (?,?,?)`
 
-	_, err := r.DB.Exec(query, car.VIN, car.SimulationEnabled) // Exec used for Insert,Update,Delete
+	_, err = r.DB.ExecContext(ctx, query, tenantID, car.VIN, car.SimulationEnabled)
 
 	return err
 }
 
 // Get All Cars
 
-func (r *CarRepository) GetAll() ([]models.Car, error) {
+func (r *CarRepository) GetAll(ctx context.Context) ([]models.Car, error) {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	query := `SELECT vin, simulation_enabled, registered_at FROM cars`
+	query := `SELECT vin, simulation_enabled, registered_at FROM cars WHERE tenant_id = ?`
 
-	rows, err := r.DB.Query(query) // Query used when multiple rows are expected
+	rows, err := r.DB.QueryContext(ctx, query, tenantID)
 
 	if err != nil {
 		return nil, err
@@ -47,27 +57,38 @@ func (r *CarRepository) GetAll() ([]models.Car, error) {
 		}
 		cars = append(cars, car)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	return cars, nil
 }
 
 // GET CAR BY VIN
 
-func (r *CarRepository) GetByVin(vin string) (models.Car, error) {
+func (r *CarRepository) GetByVin(ctx context.Context, vin string) (models.Car, error) {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return models.Car{}, err
+	}
 	var car models.Car
 
-	query := `SELECT vin, simulation_enabled, registered_at FROM cars WHERE vin=?`
+	query := `SELECT vin, simulation_enabled, registered_at FROM cars WHERE tenant_id = ? AND vin = ?`
 
-	err := r.DB.QueryRow(query, vin).Scan(&car.VIN, &car.SimulationEnabled, &car.RegisteredAt) //QueryRow : when expecting exactly one row
+	err = r.DB.QueryRowContext(ctx, query, tenantID, vin).Scan(&car.VIN, &car.SimulationEnabled, &car.RegisteredAt)
 
 	return car, err
 }
 
 // DELETE CAR
 
-func (r *CarRepository) Delete(vin string) error {
-	query := "DELETE FROM cars WHERE vin=?"
+func (r *CarRepository) Delete(ctx context.Context, vin string) error {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+	query := "DELETE FROM cars WHERE tenant_id = ? AND vin = ?"
 
-	result, err := r.DB.Exec(query, vin)
+	result, err := r.DB.ExecContext(ctx, query, tenantID, vin)
 	if err != nil {
 		return err
 	}
@@ -84,9 +105,13 @@ func (r *CarRepository) Delete(vin string) error {
 
 // Toggling Simulation Enabled
 
-func (r *CarRepository) UpdateSimulationStatus(vin string, enabled bool) error {
-	query := `UPDATE cars SET simulation_enabled = ? WHERE vin = ?`
-	result, err := r.DB.Exec(query, enabled, vin)
+func (r *CarRepository) UpdateSimulationStatus(ctx context.Context, vin string, enabled bool) error {
+	tenantID, err := tenant.FromContext(ctx)
+	if err != nil {
+		return err
+	}
+	query := `UPDATE cars SET simulation_enabled = ? WHERE tenant_id = ? AND vin = ?`
+	result, err := r.DB.ExecContext(ctx, query, enabled, tenantID, vin)
 	if err != nil {
 		return err
 	}
